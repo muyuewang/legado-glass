@@ -217,10 +217,45 @@ abstract class BaseActivity<VB : ViewBinding>(
     }
 
     private fun applyWindowBackground() {
-        if (shouldShowWindowBackground()) {
+        if (!shouldShowWindowBackground()) {
+            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            return
+        }
+        /**
+         * [全站页面的"纵深"统一在这里铺设]
+         *
+         * 所有主页面（书架/发现/RSS/我的）的根容器**都没有自己的背景**，
+         * 它们直接透出这一层 DecorView 背景。所以这里是唯一能让全站
+         * 同时获得纵深的入口 —— 改一处，50 个 Activity 一起生效。
+         *
+         * [为什么不能继续用纯色]
+         * 玻璃的观感 90% 来自"背后有东西可透"。纯色底上叠半透白，
+         * 结果只是一块浅一点的纯色，玻璃等于没做。上一版主界面之所以
+         * 显得突兀，就是因为只有 Dock 是玻璃、页面底是死色。
+         * 换成 lg_bg_page 那套"线性暖渐变 + 双光斑"后，
+         * 玻璃底下有了明暗过渡，透出来才有材质感。
+         *
+         * [什么情况下不用渐变]
+         * 用户自己设了背景图时，`upBackgroundImage()` 会在稍后把
+         * DecorView 背景整体替换成那张图 —— 这里先铺渐变也不会冲突，
+         * 但为了不留一帧闪烁，还是判断一下直接跳过。
+         * 水墨屏模式同理：它的对比度要求不能有渐变。
+         */
+        val hasCustomBgImage = runCatching {
+            ThemeConfig.getBgImage(this, resources.displayMetrics) != null
+        }.getOrDefault(false)
+
+        if (hasCustomBgImage || AppConfig.isEInkMode) {
             window.decorView.applyBackgroundTint(backgroundColor)
         } else {
-            window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            /**
+             * [必须用 setBackground 而不是 setBackgroundColor]
+             * applyBackgroundTint 的语义是"给现有背景染色"，纯色模式下
+             * 它最终也只是一块色。渐变是 drawable，必须整体替换。
+             * lg_bg_page 在 values/ 与 values-night/ 各有一份，
+             * 系统按当前明暗自动选，日/夜切换天然同步。
+             */
+            window.decorView.setBackgroundResource(R.drawable.lg_bg_page)
         }
     }
 

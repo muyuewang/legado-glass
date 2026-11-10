@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  液态玻璃设计变量层（暗色）
+
+  [暗色不是把亮色反相]
+  实测直接反相会发灰发脏。这里做三件事：
+    · 页面底改成近黑的暖调（#171614），不是纯黑 —— 纯黑让玻璃失去"所在环境"
+    · tint 改成**半透明深灰**而不是白色，靠低亮度 + 高模糊撑出材质
+    · 高光只保留细边（16% 白），大面积顶光会让暗色玻璃看起来像塑料
+-->
+<resources>
+
+    <!-- ============================================================ 页面底色 -->
+    <color name="lg_page">#171614</color>
+    <color name="lg_page_2">#1E1C19</color>
+    <color name="lg_page_deep">#100F0E</color>
+
+    <!-- ============================================================ 玻璃本体 -->
+    <!--
+      [暗色同样要算透光率，不能靠"深灰=半透"的错觉]
+      深灰本身是不透明的，55%~72% 的深灰叠上去照样把背景闷死。
+      这里统一压到 26%~30%：暗底上透出的模糊内容本身就偏暗，
+      玻璃只需要轻轻压一层，材质感由边框和模糊提供。
+      合成不透明度 ≈ 1-(1-0.28)(1-0.12) = 37%，与亮色保持同一档透光率。
+    -->
+    <!--
+      [第二轮：整体降透光，与亮色同步]
+      29%/28%/14% 提到 52%/50%/30%，合成不透明度 ≈ 1-(1-0.52)(1-0.12) = 58%，
+      与亮色同一档。暗底上透出的模糊内容本就偏暗，
+      提到这个档位后 Dock 背后封面的书名笔画不再可辨，但明暗结构仍在。
+    -->
+    <color name="lg_glass_tint">#853A3834</color>          <!-- 52% 深灰 -->
+    <color name="lg_glass_tint_strong">#803A3834</color>   <!-- 50% 深灰 -->
+    <color name="lg_glass_tint_soft">#4D302E2B</color>     <!-- 30% 深灰 -->
+
+    <!--
+      弹层专用 tint（对话框 / 弹出菜单）。
+
+      [这里是 API 31 以下的"无模糊档"，所以比亮色档更实]
+      没有跨窗口模糊时，透出来的是清晰文字边缘，正文会和背后内容叠字。
+      暗色提到 96%，只留一点明暗层次，不再穿透细节。
+
+      有模糊的档位（80% / 88%）在 values-night-v31/lg_colors.xml，
+      由资源限定符自动选择，代码里只写一次引用。
+    -->
+    <color name="lg_glass_tint_panel">#F72A2724</color>       <!-- 97% 深灰 -->
+    <color name="lg_glass_tint_menu">#FA2A2724</color>        <!-- 98% 深灰 -->
+
+    <!--
+      条栏专用档：99% 深灰。
+
+      暗色正文是**浅色字压在深底上**，透光同样会与栏内文字叠影，
+      而且比亮色更明显：浅字在深底上的轮廓对比度天然更高，
+      97% 时剩余 3% 的透光足以让"不过人类从来没有放弃过探索"
+      在底部工具栏上留下一道可辨的亮痕。所以与亮色同步拉到 99%。
+    -->
+    <color name="lg_glass_tint_bar">#FC2A2724</color>         <!-- 99% 深灰 -->
+
+    <!--
+      [暗底上边框要提亮]
+      暗色里 14% 白边在模糊背景上几乎看不见，轮廓会"化"掉。
+      提到 26% 才能稳定勾出形状，同时不至于刺眼。
+    -->
+    <color name="lg_glass_border">#42FFFFFF</color>        <!-- 26% 白 -->
+    <color name="lg_glass_border_soft">#24FFFFFF</color>   <!-- 14% 白 -->
+
+    <!-- 暗色下高光必须收敛，否则整块玻璃泛白失质感 -->
+    <color name="lg_hi_top">#33FFFFFF</color>              <!-- 20% 白 -->
+    <color name="lg_hi_bottom">#0AFFFFFF</color>           <!-- 4% 白 -->
+    <color name="lg_hi_side">#14FFFFFF</color>             <!-- 8% 白 -->
+
+    <color name="lg_sheen_start">#1FFFFFFF</color>         <!-- 12% 白 -->
+    <color name="lg_sheen_mid">#08FFFFFF</color>           <!-- 3% 白 -->
+    <color name="lg_sheen_end">#00FFFFFF</color>
+
+    <!-- ============================================================ 阴影 -->
+    <!-- 暗色下投影用纯黑是对的：底色已经够暗，纯黑才能拉开层次 -->
+    <color name="lg_shadow_1">#4D000000</color>            <!-- 30% -->
+    <color name="lg_shadow_2">#66000000</color>            <!-- 40% -->
+    <color name="lg_shadow_3">#66000000</color>
+
+    <color name="lg_shadow_lift_1">#66000000</color>
+    <color name="lg_shadow_lift_2">#80000000</color>       <!-- 50% -->
+    <color name="lg_shadow_lift_3">#66000000</color>
+
+    <!-- ============================================================ 文字 -->
+    <color name="lg_text">#F0ECE6</color>
+    <color name="lg_text_2">#A8A29A</color>
+    <color name="lg_text_3">#736E68</color>
+    <color name="lg_text_inv">#1A1A1A</color>
+
+    <!-- ============================================================ 强调色 -->
+    <!-- 暗底上青色要提亮一点，否则对比度不足 -->
+    <color name="lg_accent">#35CBBC</color>
+    <color name="lg_accent_ink">#FFFFFF</color>
+    <color name="lg_blue">#5AA0EE</color>
+    <color name="lg_danger">#EF7268</color>
+
+    <color name="lg_sep">#1AFFFFFF</color>                 <!-- 10% 白 -->
+
+    <!-- 降级实底 -->
+    <color name="lg_fallback_solid">#F2282623</color>
+
+</resources>

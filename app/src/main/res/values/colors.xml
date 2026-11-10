@@ -15,7 +15,15 @@
 
     <color name="night_mask">#00000000</color>
 
-    <color name="background">@color/md_grey_50</color>
+    <!--
+      [底色改暖，不再用 md_grey_50]
+      玻璃材质的黑话叫"要看得到背后的东西"。冷灰底 #FAFAFA 太素，
+      tint 叠上去之后和纯色板几乎没差别，整块玻璃看起来就是一块灰板。
+      readbook 定的是暖米 #F3EAE0，织物感更强，半透白压上去能分出层次。
+      这个色值在 values-night/lg_colors.xml 里有对应的近黑暖调版本，
+      DayNight 主题会自动切换，不用在这里写两套。
+    -->
+    <color name="background">@color/lg_page</color>
     <color name="background_card">@color/md_grey_100</color>
     <color name="background_menu">@color/md_grey_200</color>
     <color name="background_prefs">#7fffffff</color>

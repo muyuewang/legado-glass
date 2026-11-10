@@ -31,6 +31,7 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.source.getSourceType
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.glass.GlassDrawable
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
@@ -176,7 +177,19 @@ class ReadMenu @JvmOverloads constructor(
         if (immersiveMenu) {
             val lightTextColor = ColorUtils.withAlpha(ColorUtils.lightenColor(textColor), 0.75f)
             titleBar.setTextColor(textColor)
-            titleBar.setBackgroundColor(bgColor)
+            /**
+             * [原来是 setBackgroundColor(bgColor)]
+             *
+             * 这一行是阅读页顶部一直是"实色白条"的**真正原因**。
+             * TitleBar 自己在 onAttachedToWindow 里已经把背景铺成玻璃了，
+             * 但 ReadMenu.initView() 紧接着把它覆盖成 bgColor 实色 ——
+             * 所以无论怎么改 TitleBar，阅读页顶部都不会变。
+             *
+             * 改成调用 TitleBar 暴露的玻璃入口，两处逻辑统一到同一个材质来源。
+             * 阅读正文背后是纯色/图片底的正文，不是列表内容，但标题栏浮在正文上，
+             * 用 opaque 档玻璃（94%/v31 72%）既保证章节名可读，又保留材质语言。
+             */
+            titleBar.applyGlassBackgroundNow()
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(lightTextColor)
             tvChapterUrl.setTextColor(lightTextColor)
@@ -184,11 +197,35 @@ class ReadMenu @JvmOverloads constructor(
             val bgColor = context.primaryColor
             val textColor = context.primaryTextColor
             titleBar.setTextColor(textColor)
-            titleBar.setBackgroundColor(bgColor)
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(textColor)
             tvChapterUrl.setTextColor(textColor)
         }
+        /**
+         * [铺玻璃必须放在两个分支**外面**]
+         *
+         * 这几行的位置踩过一个很隐蔽的坑，记下来：
+         *
+         * 上一版把 `applyGlassBackgroundNow()` 分别写在 immersiveMenu 分支和
+         * reset 分支里，本意是"每次覆盖背景后补一次玻璃"。但这两个分支
+         * 并不是二选一必然命中的：
+         *   · immersiveMenu = readBarStyleFollowPage && 背景类型==纯色；
+         *   · reset 只有切换主题/背景时才是 true（首次 init 是 false）。
+         *
+         * 本机（跟随系统/非纯色底）恰好是两个都不命中的组合 ——
+         * 于是 `initView()` 从头到尾没碰过标题栏，标题栏用的是
+         * TitleBar.onAttachedToWindow 里铺的 **panel 档**（97%）。
+         *
+         * 症状极具迷惑性：改成 99% 的 bar 档、
+         * 重装、重启、截图，顶部看起来毫无变化，像素底色仍是 41（=42×0.97）。
+         * 最后靠"把 bar 档临时刷成纯红"才定位到 —— 顶部一点红色都没有，
+         * 证明它压根没走这个档位，而不是档位不够实。
+         *
+         * [为什么要无条件调用]
+         * 阅读页顶栏永远压在正文上，无论沉浸式与否都需要 bar 档的可读性。
+         * 提到分支外后，任何组合都能保证玻璃被铺上一次。
+         */
+        titleBar.applyGlassBackgroundNow()
         val brightnessBackground = GradientDrawable()
         brightnessBackground.cornerRadius = 5F.dpToPx()
         brightnessBackground.setColor(ColorUtils.adjustAlpha(bgColor, 0.5f))
@@ -197,15 +234,35 @@ class ReadMenu @JvmOverloads constructor(
             titleBar.setBackgroundResource(R.drawable.bg_eink_border_bottom)
             llBottomBg.setBackgroundResource(R.drawable.bg_eink_border_top)
         } else {
-            llBottomBg.setBackgroundColor(bgColor)
+            /**
+             * [底部工具栏换成玻璃]
+             *
+             * 原来是 setBackgroundColor(bgColor) 实色米条，与整站的玻璃语言断开。
+             * 这块区域上沿直接压着正文，做成玻璃后正文会从下面透上来，
+             * 边界由顶部的亮边交代 —— 和 Dock 是同一套形态，只是方向相反。
+             */
+            llBottomBg.background = buildBottomGlass()
         }
-        fabSearch.backgroundTintList = bottomBackgroundList
+        /**
+         * [四个悬浮按钮也要玻璃化]
+         *
+         * 原来用 bottomBackgroundList（bgColor 实色 + 按下变深）做 backgroundTint。
+         * FAB 是圆形，GlassDrawable 的圆角半径给到足够大就是正圆，
+         * 于是按钮本身也变成一枚小玻璃片，浮在正文之上。
+         * 按下态不再改色（玻璃片变色会显脏），交给 FAB 自带的 ripple 反馈。
+         *
+         * [每个按钮必须各建一个实例]
+         * 曾想用 `fabGlass.constantState?.newDrawable()` 共享一份再派生，
+         * 但 GlassDrawable 没有实现 constantState（自定义 Drawable 默认返回 null），
+         * 那样取到的是 null，背景直接消失。这里改成逐个构建，代价可以忽略。
+         */
+        listOf(fabSearch, fabAutoPage, fabReplaceRule, fabNightTheme).forEach {
+            it.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.TRANSPARENT)
+            it.background = buildFabGlass()
+        }
         fabSearch.setColorFilter(textColor)
-        fabAutoPage.backgroundTintList = bottomBackgroundList
         fabAutoPage.setColorFilter(textColor)
-        fabReplaceRule.backgroundTintList = bottomBackgroundList
         fabReplaceRule.setColorFilter(textColor)
-        fabNightTheme.backgroundTintList = bottomBackgroundList
         fabNightTheme.setColorFilter(textColor)
         val chapterTextColor = Selector.colorBuild()
             .setDefaultColor(textColor)
@@ -403,6 +460,39 @@ class ReadMenu @JvmOverloads constructor(
     private fun brightnessAuto(): Boolean {
         return context.getPrefBoolean("brightnessAuto", true) || !showBrightnessView
     }
+
+    /**
+     * 底部工具栏的玻璃材质。只圆上两角——它是贴在屏幕底边的浮层，
+     * 下两角会被系统导航栏吃掉，圆了也看不见，反而在横屏时露出缺口。
+     *
+     * [必须用 bar 档，不能用 soft]
+     * soft（30%）是给标题栏那种"背后是大片留白"的场景用的。
+     * 这里背后是**满屏正文**：实测用 soft 时，正文"不过人类从来没有放弃过探索"
+     * 直接穿上来，和栏内的"目录/朗读/界面/设置"糊成重影。
+     * 改用 bar 档（97%）后正文被压住，只留极淡的底色过渡。
+     */
+    private fun buildBottomGlass(): GlassDrawable = GlassDrawable(
+        context = context,
+        radius = context.resources.getDimension(R.dimen.lg_r_lg),
+        tint = androidx.core.content.ContextCompat.getColor(context, R.color.lg_glass_tint_bar),
+        borderColor = androidx.core.content.ContextCompat.getColor(context, R.color.lg_glass_border),
+        withShadow = false,
+        roundTopOnly = true
+    )
+
+    /**
+     * 悬浮按钮的玻璃材质。
+     *
+     * FAB 是正圆，这里把圆角半径给到 FAB 自身尺寸的一半以上（取 999dp 上限），
+     * GlassDrawable 的 addRoundRect 会自动按边长夹取，画出来就是正圆。
+     */
+    private fun buildFabGlass(): GlassDrawable = GlassDrawable(
+        context = context,
+        radius = 999f.dpToPx(),
+        tint = androidx.core.content.ContextCompat.getColor(context, R.color.lg_glass_tint_menu),
+        borderColor = androidx.core.content.ContextCompat.getColor(context, R.color.lg_glass_border),
+        withShadow = false
+    )
 
     private fun bindEvent() = binding.run {
         vwMenuBg.setOnClickListener { runMenuOut() }

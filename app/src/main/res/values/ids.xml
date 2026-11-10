@@ -21,4 +21,12 @@
     <item name="menu_show_explore_categories" type="id" />
     <item name="code_share_selection" type="id" />
 
+    <!--
+      玻璃 Dock 改造用：记录列表**原始**的底部 padding。
+      每次 inset 变化都要重新算 padding，如果直接读写 paddingBottom 本身，
+      会变成"自身 + inset"反复累加，滚一次屏列表底部就多出一块空白。
+      必须把原值存下来，每次都用 原值 + inset 重算。
+    -->
+    <item name="lg_origin_padding_bottom" type="id" />
+
 </resources>

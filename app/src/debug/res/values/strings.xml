@@ -1,4 +1,10 @@
 <resources>
-    <string name="app_name">legado·D</string>
-    <string name="receiving_shared_label">legado·D·search</string>
+    <!--
+      [debug 源集优先级高于 main]
+      main/res/values/strings.xml 里也定义了 app_name，但 debug 这份会赢，
+      所以只改 main 是看不到效果的（实测仍显示 legado·D）。
+      后缀保留 D，便于和正式版同时在桌面上区分。
+    -->
+    <string name="app_name">Legado Glass·D</string>
+    <string name="receiving_shared_label">Legado Glass·D·search</string>
 </resources>

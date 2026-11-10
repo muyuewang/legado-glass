@@ -2,17 +2,18 @@
 
 package io.legado.app.ui.main
 
-import android.graphics.Rect
 import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.MenuItem
+import android.view.View
 import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.activity.viewModels
-import androidx.core.view.doOnLayout
 import androidx.core.view.get
 import androidx.core.view.postDelayed
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
@@ -258,26 +259,233 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
         bottomNavigationView.setOnNavigationItemReselectedListener(this@MainActivity)
         if (AppConfig.isEInkMode) {
-            bottomNavigationView.setBackgroundResource(R.drawable.bg_eink_border_top)
-        }
-        bottomNavigationView.setOnApplyWindowInsetsListenerCompat { view, windowInsets ->
-            val height = windowInsets.navigationBarHeight
-            view.bottomPadding = height
-            view.doOnLayout {
-                val location = IntArray(2)
-                view.getLocationInWindow(location)
-                val keyboardTop = window.decorView.height - windowInsets.imeHeight
-                // The pager already ends above the bottom navigation, even when IME covers it.
-                viewPagerMain.bottomPadding = (location[1] - keyboardTop).coerceAtLeast(0)
-                if (windowInsets.imeHeight > 0) viewPagerMain.doOnLayout {
-                    currentFocus?.takeIf { it.onCheckIsTextEditor() }?.let { input ->
-                        input.requestRectangleOnScreen(Rect(0, 0, input.width, input.height), true)
-                    }
-                }
+            // 墨水屏模式用的是"顶部描边"背景，那是给实心底栏设计的；
+            // 玻璃 Dock 自己画边框和投影，再叠一层描边会多出一道白线
+            if (!dockInGlass) {
+                bottomNavigationView.setBackgroundResource(R.drawable.bg_eink_border_top)
             }
-            windowInsets.inset(0, 0, 0, height)
+        }
+        setupDockInsets()
+        setupDockBlur()
+    }
+
+    /**
+     * 玻璃 Dock 的真实背景模糊。
+     *
+     * [为什么必须绑定父容器]
+     * View 拿不到"自己背后的像素"，只能让父容器把当前画面画到 Bitmap 再裁剪。
+     * 这里传 rootView —— 它下面挂着 ViewPager 的全部内容。
+     * 绝不能传 glassDock 自己：那样绘制时会递归读自己，直接黑屏。
+     */
+    private fun setupDockBlur() = binding.run {
+        glassDock.attachBlurSource(rootView)
+
+        /**
+         * [刷新时机比模糊本身更关键]
+         * 截屏 + 高斯模糊 1080p 一次约 8~15ms，绝不能挂到每帧。
+         * 只在三种时机刷新：
+         *   1) 页面切换完成后 —— 背后内容整体换了
+         *   2) 书架列表滚动停止 —— 滚动中不刷，否则必掉帧
+         *   3) Fragment 视图就绪首次填充后
+         */
+
+        // 1) 翻页结束
+        viewPagerMain.addOnPageChangeListener(object : ViewPager.SimpleOnPageChangeListener() {
+            override fun onPageSelected(position: Int) {
+                // 等新页面的视图真正挂上去再截，否则截到的是上一页
+                viewPagerMain.postDelayed(120) { glassDock.refreshBlur() }
+            }
+        })
+
+        // 2) 书架滚动停止：监听 ViewPager 内所有可滚动子 View
+        viewPagerMain.postDelayed(600) {
+            attachScrollIdleListener(rootView, glassDock)
         }
     }
+
+    /**
+     * 递归找出所有可滚动容器，挂上"停止滚动"回调。
+     *
+     * [为什么用递归而不是直接拿 RecyclerView]
+     * 书架有两套布局（style1 网格 / style2 列表），还可能被 SwipeRefreshLayout
+     * 和 ViewPager2 多层包裹，层级不固定。逐个硬编码路径会在切换样式时失效。
+     */
+    private fun attachScrollIdleListener(view: View, dock: io.legado.app.lib.glass.GlassPanel) {
+        if (view is androidx.recyclerview.widget.RecyclerView) {
+            view.addOnScrollListener(object :
+                androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+                override fun onScrollStateChanged(
+                    recyclerView: androidx.recyclerview.widget.RecyclerView,
+                    newState: Int
+                ) {
+                    // SCROLL_STATE_IDLE == 0，手指抬起且惯性也停了
+                    if (newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_IDLE) {
+                        dock.refreshBlur()
+                    }
+                }
+            })
+        } else if (view is android.widget.ScrollView) {
+            // ScrollView 没有滚动状态回调，用 fling/触摸结束近似判断
+            view.setOnTouchListener { v, event ->
+                if (event.actionMasked == android.view.MotionEvent.ACTION_UP
+                    || event.actionMasked == android.view.MotionEvent.ACTION_CANCEL
+                ) {
+                    v.postDelayed({ dock.refreshBlur() }, 120)
+                }
+                false
+            }
+        }
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                attachScrollIdleListener(view.getChildAt(i), dock)
+            }
+        }
+    }
+
+    /**
+     * Dock 悬浮后的边距与内容避让。
+     *
+     * [为什么不能再沿用原来那段监听]
+     * 原实现里底栏是 LinearLayout 的第二行，它天然占掉了导航栏那段空间，
+     * 所以只要 `view.bottomPadding = navBar` 就够，ViewPager 底部就在它上方。
+     * 现在 Dock 改成 FrameLayout 里的悬浮层，它和 ViewPager **重叠**了：
+     *   · Dock 自己要往外让，否则压在系统导航条上；
+     *   · ViewPager 要往内让，否则书架最后一行被 Dock 挡住点不到。
+     * 这两件事必须一起算，所以监听挂到 root 上统一分发。
+     */
+    private fun setupDockInsets() {
+        binding.rootView.setOnApplyWindowInsetsListenerCompat { _, windowInsets ->
+            val navBar = windowInsets.navigationBarHeight
+            val ime = windowInsets.imeHeight
+            navBarPaddingCache = navBar
+
+            /**
+             * [键盘弹出时必须把 Dock 藏起来]
+             * Dock 悬浮在最上层，不隐藏就会骑在键盘顶端，
+             * 正好盖住输入框下方的候选区，用户会以为界面坏了。
+             */
+            val dockVisible = ime == 0
+
+            /**
+             * [改可见性必须 post 出去]
+             * 这个回调发生在 inset 分发过程中，某些机型此时仍处于 layout 阶段，
+             * 直接 setVisibility 触发 requestLayout，会打出一条
+             * "requestLayout() improperly called during layout" 并可能导致布局错位。
+             * 用 post 推到下一帧执行最稳。
+             */
+            val target = if (dockVisible) View.VISIBLE else View.GONE
+            if (binding.glassDock.visibility != target) {
+                binding.glassDock.post { binding.glassDock.visibility = target }
+            }
+
+            /**
+             * [边距用常量重算，不能读 layoutParams 累加]
+             * 每次 inset 变化都会走这里。若读上一次的 bottomMargin 再加 navBar，
+             * 会越加越大，表现为转几次屏之后 Dock 飘到屏幕中间。
+             */
+            binding.glassDock.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = dockMarginBase + navBar
+            }
+
+            /**
+             * [绝不能再给 ViewPager 本体加 padding]
+             *
+             * 上一版这里写的是 viewPagerMain.updatePadding(bottom = dockOccupiedHeight)，
+             * 后果是：ViewPager 的内容区被整体上移，Fragment 变矮，
+             * 里面的 RecyclerView 底部就停在 Dock 上方 ——
+             * Dock 背后永远是空的渐变底，没有任何内容可以透出来。
+             * 这正是"根本看不到下面的背景"的直接原因。
+             *
+             * 正确做法是让内容铺满全屏、滚到 Dock 底下，
+             * 只给**列表自身**加 contentPadding（见 applyContentUnderDock）。
+             */
+            binding.viewPagerMain.setPadding(0, 0, 0, 0)
+
+            // 列表底部留白，保证最后一行能滚到 Dock 上方被点到
+            applyContentUnderDock()
+
+            // 交给子 View 的 insets 不再含底部，避免重复消耗
+            windowInsets.inset(0, 0, 0, navBar)
+        }
+    }
+
+    /**
+     * 让列表内容延伸到 Dock 下方，同时保留可点击的最后一行。
+     *
+     * [为什么改列表而不是改 ViewPager]
+     * 只有列表自己能同时做到两件事：
+     *   · clipToPadding=false —— 滚动时内容可以画进 padding 区域（即 Dock 底下）
+     *   · paddingBottom —— 滚到底时最后一行停在 Dock 上方，不被遮住
+     * 改 ViewPager 的话整个 Fragment 都被缩短，内容根本到不了 Dock 后面。
+     */
+    private fun applyContentUnderDock() {
+        val inset = dockOccupiedHeight
+        walkViews(binding.rootView) { v ->
+            when (v) {
+                is androidx.recyclerview.widget.RecyclerView -> {
+                    v.clipToPadding = false
+                    v.updatePadding(
+                        bottom = (v.getTag(R.id.lg_origin_padding_bottom) as? Int
+                            ?: v.paddingBottom).also {
+                            if (v.getTag(R.id.lg_origin_padding_bottom) == null) {
+                                v.setTag(R.id.lg_origin_padding_bottom, it)
+                            }
+                        } + inset
+                    )
+                }
+
+                is android.widget.ScrollView -> {
+                    v.clipToPadding = false
+                    val origin = (v.getTag(R.id.lg_origin_padding_bottom) as? Int)
+                        ?: v.paddingBottom.also {
+                            v.setTag(R.id.lg_origin_padding_bottom, it)
+                        }
+                    v.updatePadding(bottom = origin + inset)
+                }
+            }
+        }
+    }
+
+    /** 深度优先遍历所有子 View */
+    private fun walkViews(view: View, action: (View) -> Unit) {
+        action(view)
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                walkViews(view.getChildAt(i), action)
+            }
+        }
+    }
+
+    /**
+     * Dock 实际占用的垂直高度：自身高度 + 外边距 + 导航栏 + 投影展开量。
+     *
+     * 投影由 GlassDrawable 用三层同心外扩绘制，视觉范围比布局尺寸高出一截，
+     * 不把这段算进去，最后一行卡片会被"阴影的边"压住一点点。
+     */
+    private val dockOccupiedHeight: Int
+        get() {
+            val layoutH = binding.glassDock.height.takeIf { it > 0 }
+                ?: resources.getDimensionPixelSize(R.dimen.lg_dock_height)
+            return layoutH + dockMarginBase + navBarPaddingCache +
+                resources.getDimensionPixelSize(R.dimen.lg_shadow_spread)
+        }
+
+    /** 导航栏高度缓存，供 dockOccupiedHeight 使用（inset 回调里更新） */
+    private var navBarPaddingCache: Int = 0
+
+    /** Dock 不含系统导航栏的基准外边距，对应 XML 的 layout_marginBottom */
+    private val dockMarginBase: Int by lazy {
+        resources.getDimensionPixelSize(R.dimen.lg_dock_margin)
+    }
+
+    /**
+     * Dock 是否真的处在玻璃面板内。
+     *
+     * 保留这个判断而不是直接删掉墨水屏分支：GlassPanel 是可复用的，
+     * 未来若把 Dock 换回普通容器，墨水屏描边要能自动恢复。
+     */
+    private val dockInGlass: Boolean
+        get() = (binding.bottomNavigationView.parent as? io.legado.app.lib.glass.GlassPanel) != null
 
     /**
      * 用户隐私与协议

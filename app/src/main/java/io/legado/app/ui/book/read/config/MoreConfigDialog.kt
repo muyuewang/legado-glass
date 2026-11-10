@@ -18,6 +18,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.lib.glass.GlassDrawable
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.primaryColor
@@ -39,7 +40,12 @@ class MoreConfigDialog : BasePrefDialogFragment() {
         super.onStart()
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setBackgroundDrawableResource(R.color.background)
+            /**
+             * [原来是 setBackgroundDrawableResource(R.color.background)]
+             * 窗口背景设成不透明实色，会把 BaseDialogFragment 铺的玻璃整个盖掉。
+             * 改成透明，让窗口那层玻璃透出来。
+             */
+            setBackgroundDrawableResource(android.R.color.transparent)
             decorView.setPadding(0, 0, 0, 0)
             val attr = attributes
             attr.dimAmount = 0.0f
@@ -56,7 +62,33 @@ class MoreConfigDialog : BasePrefDialogFragment() {
     ): View {
         (activity as ReadBookActivity).bottomDialog++
         val view = LinearLayout(context)
-        view.setBackgroundColor(requireContext().bottomBackground)
+        /**
+         * [原来是 view.setBackgroundColor(bottomBackground)]
+         *
+         * 这是"设置面板整片米色"的第二个来源：这里手工 new 了一个 LinearLayout
+         * 当容器，并给它铺了实色底，同样把玻璃盖住。
+         *
+         * 这个容器是**程序创建**的，不走 BaseDialogFragment.onViewCreated 的玻璃逻辑
+         * （那条路径只处理布局 inflate 出来的根视图），所以必须在这里单独铺玻璃。
+         *
+         * [用 bar 档] 和 ReadStyleDialog 同理：背后是满屏正文，
+         * panel（97%）下正文仍会穿进面板与偏好项文字叠加。
+         */
+        view.background = GlassDrawable(
+            context = requireContext(),
+            radius = resources.getDimension(R.dimen.lg_r_lg),
+            tint = androidx.core.content.ContextCompat.getColor(
+                requireContext(),
+                R.color.lg_glass_tint_bar
+            ),
+            borderColor = androidx.core.content.ContextCompat.getColor(
+                requireContext(),
+                R.color.lg_glass_border
+            ),
+            withShadow = false,
+            roundTopOnly = true
+        )
+        view.clipToOutline = true
         view.id = R.id.tag1
         container?.addView(view)
         return view

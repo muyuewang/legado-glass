@@ -18,3 +18,13 @@ package-lock.json
 .kotlin/
 .cxx
 .vscode
+
+# 构建产物与本地调试素材
+# dist/ 里是导出的成品 APK（51MB）和实机验证截图（95 张），
+# 属于每次构建/测试都会重新生成的东西，不该进版本库：
+# APK 走 GitHub Release 附件分发，截图只是本地验证留痕。
+/dist/
+*.apk
+*.ap_
+*.aab
+ui.xml

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  液态玻璃面板的可配置属性。
+
+  [为什么要走自定义属性，而不是在代码里写死]
+  同一个 GlassPanel 在主界面要当悬浮 Dock（大圆角、有投影），
+  在弹层里要当对话框底板（更实的 tint、不要投影），
+  在列表卡片里又是另一种参数。全部硬编码就得派生出三个类，
+  属性化之后一个类覆盖全部场景，布局里直接声明即可。
+-->
+<resources>
+
+    <declare-styleable name="GlassPanel">
+        <!-- 圆角半径 -->
+        <attr name="lgRadius" format="dimension" />
+        <!-- 是否绘制投影 -->
+        <attr name="lgShadow" format="boolean" />
+        <!-- 投影强度倍率 -->
+        <attr name="lgShadowScale" format="float" />
+        <!-- tint 强度：0=soft 1=标准 2=strong -->
+        <attr name="lgTintLevel" format="enum">
+            <enum name="soft" value="0" />
+            <enum name="normal" value="1" />
+            <enum name="strong" value="2" />
+        </attr>
+        <!-- 是否启用真实背景模糊。关掉就是纯色玻璃（低端机/省电） -->
+        <attr name="lgBlur" format="boolean" />
+        <!-- 模糊半径（dp） -->
+        <attr name="lgBlurRadius" format="dimension" />
+        <!-- 模糊采样降采样倍率：越大越快越糊。2~6 之间比较合适 -->
+        <attr name="lgBlurDownscale" format="integer" />
+    </declare-styleable>
+
+</resources>

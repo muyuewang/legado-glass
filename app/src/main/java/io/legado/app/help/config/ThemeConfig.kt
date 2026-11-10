@@ -321,7 +321,15 @@ object ThemeConfig {
         val primary =
             context.getPrefInt(PreferKey.cPrimary, context.getCompatColor(R.color.md_brown_500))
         val accent =
-            context.getPrefInt(PreferKey.cAccent, context.getCompatColor(R.color.md_red_600))
+            /**
+             * [强调色默认值：md_red_600 → lg_accent]
+             * 这一项决定了几乎所有"有颜色"的地方：tab 选中下划线、
+             * 按钮文字、选中态图标、进度条、Badge 背景。
+             * 上游默认是正红 md_red_600，在暖褐 + 暖米的底上非常扎眼 ——
+             * 截图里书架 tab 下面那道红杠就是它，跟整套暖色完全不搭。
+             * 统一成 lg_accent（青 #2FBFB0），与图标里的标签、Dock 选中态同一个值。
+             */
+            context.getPrefInt(PreferKey.cAccent, context.getCompatColor(R.color.lg_accent))
         val background =
             context.getPrefInt(PreferKey.cBackground, context.getCompatColor(R.color.md_grey_100))
         val bBackground =
@@ -360,7 +368,13 @@ object ThemeConfig {
         val accent =
             context.getPrefInt(
                 PreferKey.cNAccent,
-                context.getCompatColor(R.color.md_deep_orange_800)
+                /**
+                 * [夜间默认色 md_deep_orange_800 → lg_accent]
+                 * 夜间原来用深橙，和日间那个正红不是同一个色，导致日夜切换时
+                 * 强调色会跳变。统一到 lg_accent 后，日/夜只剩明度差异
+                 * （values-night 里 lg_accent 已提亮到 #35CBBC），色相一致。
+                 */
+                context.getCompatColor(R.color.lg_accent)
             )
         val background =
             context.getPrefInt(PreferKey.cNBackground, context.getCompatColor(R.color.md_grey_900))
@@ -409,7 +423,7 @@ object ThemeConfig {
                 val primary =
                     getPrefInt(PreferKey.cNPrimary, getCompatColor(R.color.md_blue_grey_600))
                 val accent =
-                    getPrefInt(PreferKey.cNAccent, getCompatColor(R.color.md_deep_orange_800))
+                    getPrefInt(PreferKey.cNAccent, getCompatColor(R.color.lg_accent))
                 var background =
                     getPrefInt(PreferKey.cNBackground, getCompatColor(R.color.md_grey_900))
                 if (ColorUtils.isColorLight(background)) {
@@ -419,7 +433,7 @@ object ThemeConfig {
                 val bBackground =
                     getPrefInt(PreferKey.cNBBackground, getCompatColor(R.color.md_grey_850))
                 val transparentNavBar =
-                    getPrefBoolean(PreferKey.tNavBarN, false)
+                    getPrefBoolean(PreferKey.tNavBarN, true)
                 ThemeStore.editTheme(this)
                     .primaryColor(ColorUtils.withAlpha(primary, 1f))
                     .accentColor(ColorUtils.withAlpha(accent, 1f))
@@ -433,17 +447,34 @@ object ThemeConfig {
                 val primary =
                     getPrefInt(PreferKey.cPrimary, getCompatColor(R.color.md_brown_500))
                 val accent =
-                    getPrefInt(PreferKey.cAccent, getCompatColor(R.color.md_red_600))
+                    getPrefInt(PreferKey.cAccent, getCompatColor(R.color.lg_accent))
+                /**
+                 * [默认底色改成暖米 lg_page]
+                 * 原来的默认是 md_grey_100（冷灰）。液态玻璃要求底色有温度、
+                 * 有纵深，冷灰配半透白会显脏、且和暖色玻璃边框打架。
+                 * 这里只改"默认值"—— 用户自己调过的颜色仍然优先。
+                 */
                 var background =
-                    getPrefInt(PreferKey.cBackground, getCompatColor(R.color.md_grey_100))
+                    getPrefInt(PreferKey.cBackground, getCompatColor(R.color.lg_page))
                 if (!ColorUtils.isColorLight(background)) {
-                    background = getCompatColor(R.color.md_grey_100)
+                    background = getCompatColor(R.color.lg_page)
                     putPrefInt(PreferKey.cBackground, background)
                 }
                 val bBackground =
-                    getPrefInt(PreferKey.cBBackground, getCompatColor(R.color.md_grey_200))
+                    getPrefInt(PreferKey.cBBackground, getCompatColor(R.color.lg_page))
+                /**
+                 * [透明导航栏改为默认开启]
+                 *
+                 * 这是整屏风格统一的关键：标题栏如果不透明，就是一条压在
+                 * 米色页面上的实色色带，与悬浮玻璃 Dock 完全两种语言。
+                 * 开启后 TitleBar 自动透明 + 前景色自动适配（见 TitleBar.init），
+                 * 页面渐变能从状态栏一直贯穿到底部 Dock。
+                 *
+                 * 注意必须改这里的默认值，改 app_themes.xml 是无效的 ——
+                 * 应用每次启动都会用 PreferKey.tNavBar 重新覆盖一遍。
+                 */
                 val transparentNavBar =
-                    getPrefBoolean(PreferKey.tNavBar, false)
+                    getPrefBoolean(PreferKey.tNavBar, true)
                 ThemeStore.editTheme(this)
                     .primaryColor(ColorUtils.withAlpha(primary, 1f))
                     .accentColor(ColorUtils.withAlpha(accent, 1f))

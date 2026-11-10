@@ -1,9 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-       android:shape="rectangle">
+<!--
+  弹出菜单的玻璃底板（XML 版）。
 
-    <solid android:color="@color/background_menu"/>
+  [为什么这里做不到真实模糊，只能用 layer-list 逼近]
+  系统 PopupMenu 的背景由主题属性 android:popupBackground 指定，
+  取值必须是 drawable 资源 —— 走资源引用而不是代码注入，
+  没法塞进一个 GlassDrawable 实例。
 
-    <corners android:radius="2dp"/>
+  [那就把玻璃的要素用 XML 复刻出来]
+  GlassDrawable 的观感由 tint + 边框 + 内高光三项决定，投影在菜单上本来
+  就要关掉（交给 PopupWindow.elevation）。所以这里只需要：
+    ① 半透明白底（82%，菜单文字小、行密，透太多会串行）
+    ② 92% 白边，玻璃越透边框越要硬，否则轮廓会化进背景
+    ③ 20dp 圆角，与代码侧 lg_r_md 保持一致
+  缺的只是背后那层模糊；API 31+ 的菜单由系统模糊补上。
 
-</shape>
+  注意：XML 注释里不能出现连续两个减号，否则资源合并会报错。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/lg_r_md" />
+            <solid android:color="@color/lg_glass_tint_menu" />
+            <stroke
+                android:width="@dimen/lg_border_width"
+                android:color="@color/lg_glass_border" />
+        </shape>
+    </item>
+
+</layer-list>

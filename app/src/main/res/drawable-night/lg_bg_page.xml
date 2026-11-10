@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  页面底层（暗色）。
+
+  [暗色不能把亮色反相]
+  直接反相会得到一片发灰的紫褐色，非常脏。这里走独立的近黑暖调：
+  基底 #171614（带一点暖），光斑用冷白提亮 + 深褐压暗，
+  保证玻璃叠上去之后边缘仍有明暗过渡，而不是糊成一团黑。
+
+  [光斑浓度必须比亮色低]
+  暗底对高光更敏感，同样 55% 的白在深色上是刺眼的灰雾。
+  这里压到 10%~14%，只够"看出来有光"，不抢戏。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#1C1B19"
+                android:centerColor="#171614"
+                android:endColor="#121110"
+                android:type="linear" />
+        </shape>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:centerX="0.18"
+                android:centerY="0.06"
+                android:gradientRadius="520dp"
+                android:startColor="#1AFFFFFF"
+                android:endColor="#00FFFFFF"
+                android:type="radial" />
+        </shape>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:centerX="0.92"
+                android:centerY="0.95"
+                android:gradientRadius="460dp"
+                android:startColor="#14786A58"
+                android:endColor="#00786A58"
+                android:type="radial" />
+        </shape>
+    </item>
+
+</layer-list>

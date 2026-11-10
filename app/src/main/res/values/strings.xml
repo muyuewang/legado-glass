@@ -8,8 +8,10 @@
     <string name="paragraph_image">Image %1$d</string>
     <string name="paragraph_read_menu">Reading menu</string>
     <!--App-->
-    <string name="app_name">Legado</string>
-    <string name="app_name_a">Legado·A</string>
+    <!-- [改名的原因] 原版叫 Legado，二开版要和原版并存安装、并存对比， -->
+    <!-- 桌面图标下不区分的话根本分不清点的是哪个。保留 Legado 前缀便于溯源。 -->
+    <string name="app_name">Legado Glass</string>
+    <string name="app_name_a">Legado Glass·A</string>
     <string name="app_name_s" translatable="false">LegadoPlus</string>
     <string name="receiving_shared_label">Legado·search</string>
     <string name="receiving_shared_import_label">Legado·import</string>

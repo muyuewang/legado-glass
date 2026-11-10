@@ -18,6 +18,7 @@ import io.legado.app.databinding.ItemReadStyleBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.selector
+import io.legado.app.lib.glass.GlassDrawable
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
@@ -45,7 +46,16 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
         super.onStart()
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setBackgroundDrawableResource(R.color.background)
+            /**
+             * [原来是 setBackgroundDrawableResource(R.color.background)]
+             *
+             * 这一行把窗口背景设成**不透明实色**，直接盖掉了
+             * BaseDialogFragment.onStart 里铺的玻璃窗口背景。
+             * 阅读页设置面板"整片米色 + 不透"的第一个原因就是它。
+             *
+             * 改成透明，让窗口那层玻璃透出来；下方正文本来就该隐约可见。
+             */
+            setBackgroundDrawableResource(android.R.color.transparent)
             decorView.setPadding(0, 0, 0, 0)
             val attr = attributes
             attr.dimAmount = 0.0f
@@ -72,7 +82,41 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
         val bg = requireContext().bottomBackground
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = requireContext().getPrimaryTextColor(isLight)
-        rootView.setBackgroundColor(bg)
+        /**
+         * [原来这里是 rootView.setBackgroundColor(bg)]
+         *
+         * 第二个盖住玻璃的地方：BaseDialogFragment 已经在 onViewCreated 里
+         * 给根视图铺了 GlassDrawable，这里又把它覆盖成 bottomBackground 实色。
+         * 两处都改掉，玻璃才真正露出来。
+         *
+         * [用 bar 档而不是 panel 档]
+         * 这个面板是**贴着屏幕底部、背后就是满屏正文**的浮层，
+         * 与阅读页顶部/底部条栏是同一种处境 —— 正文黑字压在近黑底上，
+         * 透光会在面板里留下字的灰影。实测 panel（97%）下
+         * "在国际空间站外、冰冷与死亡并存"这行仍能穿进面板，
+         * 与"字号/字距/行距"控件叠在一起。
+         *
+         * 通用基类 BaseDialogFragment 不能跟着改：它还服务书籍详情、
+         * 分组管理等对话框，那些背后是大片留白或列表，panel 档才有通透感。
+         * 所以只在阅读页这两个面板里显式指定 bar 档。
+         *
+         * 只圆上两角：面板贴着屏幕底边，下沿会被导航栏吃掉。
+         */
+        rootView.background = GlassDrawable(
+            context = requireContext(),
+            radius = resources.getDimension(R.dimen.lg_r_lg),
+            tint = androidx.core.content.ContextCompat.getColor(
+                requireContext(),
+                R.color.lg_glass_tint_bar
+            ),
+            borderColor = androidx.core.content.ContextCompat.getColor(
+                requireContext(),
+                R.color.lg_glass_border
+            ),
+            withShadow = false,
+            roundTopOnly = true
+        )
+        rootView.clipToOutline = true
         tvPageAnim.setTextColor(textColor)
         tvBgTs.setTextColor(textColor)
         tvShareLayout.setTextColor(textColor)

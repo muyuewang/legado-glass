@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  页面底层：柔和暖色渐变 + 两处光斑。
+
+  [为什么不能用纯色底]
+  液态玻璃的效果完全依赖"背后有东西可以透"。纯色底虽然也有颜色，
+  但它均匀无变化 —— 玻璃糊上去和直接刷一块半透白没有区别，
+  视觉上就是"一块贴错地方的塑料"。
+  这正是上一版 Dock 显得突兀的根本原因：不是 Dock 做得不像玻璃，
+  而是整屏没有任何纵深可供它折射。
+
+  [为什么用 radial 光斑而不是纯 linear]
+  线性渐变只能造出"上亮下暗"，是平面感。
+  两个偏心 radial（左上冷白、右下暖褐）能造出"光源在左上、材质有厚度"的错觉，
+  玻璃扫过时边缘会产生明暗变化，这才叫层次。
+
+  [颜色取值]
+  底 #F3EAE0 与 lg_page 一致；光斑用同族提亮/压暗，不引入第二种色相，
+  避免"米色底上飘着一块粉"的脏感。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ① 基底：整体暖米，给一个极缓的上下渐变，暗示光源在上方 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#F7F0E8"
+                android:centerColor="#F3EAE0"
+                android:endColor="#EDE2D5"
+                android:type="linear" />
+        </shape>
+    </item>
+
+    <!-- ② 左上光斑：模拟主光源，半径大、极淡，只做微妙的提亮 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:centerX="0.18"
+                android:centerY="0.06"
+                android:gradientRadius="520dp"
+                android:startColor="#8CFFFFFF"
+                android:endColor="#00FFFFFF"
+                android:type="radial" />
+        </shape>
+    </item>
+
+    <!-- ③ 右下暖斑：与左上形成对角张力，让平面"站"起来 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:centerX="0.92"
+                android:centerY="0.95"
+                android:gradientRadius="460dp"
+                android:startColor="#2ED9C4A8"
+                android:endColor="#00D9C4A8"
+                android:type="radial" />
+        </shape>
+    </item>
+
+</layer-list>

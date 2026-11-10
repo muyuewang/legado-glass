@@ -39,15 +39,32 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
         R.id.menu_my_config to R.drawable.ic_bottom_person,
     )
 
+    /**
+     * [玻璃模式：底栏自己不再画背景]
+     *
+     * 原来的 init 无条件 setBackgroundColor(bgColor)，会把 XML 里写的
+     * `android:background="@color/transparent"` 覆盖掉 —— 结果玻璃面板内部
+     * 还包着一层不透明底，模糊层被彻底盖住，看起来就只是一块普通灰板。
+     *
+     * 判定方式选"看父容器"而不是加一个 XML 属性，是为了让所有引用本类的地方
+     * （主界面 Dock、皮肤页预览）自动生效，不必逐处传参。
+     */
+    private val inGlassPanel: Boolean
+        get() = parent is io.legado.app.lib.glass.GlassPanel
+
     init {
         val transparentNavBar = context.transparentNavBar
-        val bgColor = if (transparentNavBar) context.backgroundColor else context.bottomBackground
-        if (transparentNavBar) {
-            setBackgroundColor(Color.TRANSPARENT)
-        } else {
-            setBackgroundColor(bgColor)
-            elevation = context.elevation
-        }
+
+        /**
+         * [这里只能按"不在玻璃里"先初始化一次]
+         * XML 的 inflate 顺序是：先 new 出本 View（此时 parent 必然为 null），
+         * 再 addView 挂进父容器。所以 init 阶段读 parent 永远拿不到 GlassPanel。
+         * 真实判定放在 onAttachedToWindow 里重做。
+         */
+        applyGlassBackground()
+
+        val bgColor = if (transparentNavBar) context.backgroundColor
+        else context.bottomBackground
         val textIsDark = ColorUtils.isColorLight(bgColor)
         val textColor = context.getSecondaryTextColor(textIsDark)
         val colorStateList = Selector.colorBuild()
@@ -63,6 +80,33 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(this, null)
+    }
+
+    /**
+     * 按"是否身处玻璃面板"决定底栏背景。
+     *
+     * 在玻璃里 → 彻底透明 + 清掉 elevation。
+     *   · 不透明底会把 GlassPanel 的模糊层整块盖死；
+     *   · elevation 会再投一层 Material 阴影，和 GlassDrawable 的投影叠成双重黑影，
+     *     圆角处尤其脏。
+     * 不在玻璃里 → 维持上游原行为，不能因为改主界面而影响其他页面。
+     */
+    private fun applyGlassBackground() {
+        if (inGlassPanel) {
+            setBackgroundColor(Color.TRANSPARENT)
+            elevation = 0f
+        } else {
+            val bgColor = if (context.transparentNavBar) context.backgroundColor
+            else context.bottomBackground
+            setBackgroundColor(bgColor)
+            elevation = context.elevation
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // 此时 parent 已经就位，重新判一次（init 阶段 parent 必为 null）
+        applyGlassBackground()
     }
 
     /**

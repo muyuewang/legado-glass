@@ -23,11 +23,11 @@ pluginManagement {
         gradlePluginPortal()
         mavenCentral()
         //镜像仓库,无法连接源仓库自行启用镜像仓库,不要提交修改
-        //maven { url "https://maven-central-asia.storage-download.googleapis.com/maven2/" }
-        //maven { url 'https://maven.aliyun.com/repository/google' }
-        //maven { url 'https://maven.aliyun.com/repository/public' }
-        //maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-        //maven { url 'https://repo.huaweicloud.com/repository/maven/' }
+        // 本项目在国内网络环境下构建，源仓库偶发超时，故把镜像放在**兜底位置**：
+        // 原始仓库仍然优先命中（保持与上游一致的产物版本），只有在前者失败时才回落。
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
     }
 }
 
@@ -57,10 +57,9 @@ dependencyResolutionManagement {
         mavenCentral()
 
         //镜像仓库,无法连接源仓库自行启用镜像仓库,不要提交修改
-        //maven { url "https://maven-central-asia.storage-download.googleapis.com/maven2/" }
-        //maven { url 'https://maven.aliyun.com/repository/google' }
-        //maven { url 'https://maven.aliyun.com/repository/public' }
-        //maven { url 'https://repo.huaweicloud.com/repository/maven/' }
+        // 同 pluginManagement：镜像仅作兜底，不改变产物版本选择
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
     }
 }
 rootProject.name = 'legado'

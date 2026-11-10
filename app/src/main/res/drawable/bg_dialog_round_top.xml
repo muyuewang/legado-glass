@@ -1,10 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/background" />
-    <stroke
-        android:width="1dp"
-        android:color="@color/reviewCardStroke" />
-    <corners
-        android:topLeftRadius="22dp"
-        android:topRightRadius="22dp" />
-</shape>
+<!--
+  底部滑出面板的玻璃底板（ReviewDetailDialog 使用）。
+
+  [只用顶部圆角是有原因的]
+  这个面板从屏幕底边顶上来，底部两侧的圆角会被屏幕边缘切掉，
+  写 full 圆角反而在底部留下两道"缺角"的白缝。只做 topLeft/topRight 才是对的。
+
+  [用 panel 档的 72% 而不是 Dock 的 27%]
+  面板里是成段的书评正文，文字直接画在玻璃上。太透会让正文和背后的
+  章节内容叠在一起，完全没法读。72% 保证可读，同时仍透出 24% 背景层次。
+
+  注意：XML 注释里不能出现连续两个减号，否则资源合并会报错。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/lg_glass_tint_panel" />
+            <stroke
+                android:width="@dimen/lg_border_width"
+                android:color="@color/lg_glass_border" />
+            <corners
+                android:topLeftRadius="@dimen/lg_r_lg"
+                android:topRightRadius="@dimen/lg_r_lg" />
+        </shape>
+    </item>
+
+</layer-list>

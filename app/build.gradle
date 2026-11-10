@@ -64,7 +64,15 @@ android {
     }
     defaultConfig {
         applicationId "com.legado.app"
-        minSdk 23
+        // [minSdk 23 → 26]
+        // third_party 里的 htmlunit-core-js-5.3.0-legado.4.jar 用到
+        // MethodHandle.invoke / invokeExact，这两个 API 从 Android 8.0 (API 26)
+        // 才开始支持。minSdk 23 时 D8 直接报：
+        //   MethodHandle.invoke and MethodHandle.invokeExact are only supported
+        //   starting with Android O (--min-api 26)  → Error while dexing
+        // 该 jar 是 JS 引擎（Rhino 分支）的依赖，书源规则离不开它，不能剔。
+        // 因此把最低版本抬到 26；Android 8.0 以下设备占比已极低。
+        minSdk 26
         targetSdk 36
         versionCode = versionCodeValue
         versionName version

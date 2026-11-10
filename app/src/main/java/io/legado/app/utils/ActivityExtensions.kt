@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 import androidx.fragment.app.DialogFragment
 import io.legado.app.R
+import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.ui.widget.dialog.TextDialog
 
 inline fun <reified T : DialogFragment> AppCompatActivity.showDialogFragment(
@@ -96,7 +97,21 @@ fun Activity.setStatusBarColorAuto(
     isTransparent: Boolean,
     fullScreen: Boolean
 ) {
-    val isLightBar = ColorUtils.isColorLight(color)
+    /**
+     * [透明状态栏下的亮暗判据不能再用 color]
+     *
+     * color 在透明模式下传进来的是主色（深褐 #7x4x3x），
+     * isColorLight(深褐) = false → 配上**白色**图标。
+     * 但透明状态栏背后露出来的是米色页面底 —— 白图标在米底上几乎看不见。
+     *
+     * 正确判据是"图标实际压在什么颜色上"：
+     *   · 透明 → 页面背景色 backgroundColor
+     *   · 不透明 → 状态栏自身的颜色 color
+     * 这才是决定图标该用黑还是白的真实依据。
+     */
+    val isLightBar = ColorUtils.isColorLight(
+        if (isTransparent) backgroundColor else color
+    )
     if (fullScreen) {
         if (isTransparent) {
             window.statusBarColor = Color.TRANSPARENT

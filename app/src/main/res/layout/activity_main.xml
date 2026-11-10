@@ -1,26 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  液态玻璃主界面。
+
+  [结构从 LinearLayout 换成 FrameLayout 的原因]
+  原来底部导航是 LinearLayout 的第二行，与 ViewPager 上下并排，
+  它背后只有一层纯色窗口背景 —— 玻璃放在那儿就是"糊一块空色"，根本看不出玻璃。
+  换成 FrameLayout 后 ViewPager 铺满全屏，Dock 浮在书架封面之上，
+  截屏能拿到真实内容，模糊才有意义。
+  代价是 Dock 会遮住列表底部，所以要给 ViewPager 补 bottomPadding（见 MainActivity）。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@drawable/lg_bg_page"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/view_pager_main"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
         tools:ignore="SpeakableTextPresentCheck" />
 
-    <io.legado.app.lib.theme.view.ThemeBottomNavigationVIew
-        android:id="@+id/bottom_navigation_view"
+    <!--
+      [模糊的开启条件]
+      真实模糊依赖"父容器截屏"。书架为空时背后什么都没有，糊出来还是一片底色，
+      所以纯空状态看不出效果 —— 这是正常的，不是功能坏了。
+      截屏来源由 MainActivity 在 attach 后绑定到 rootView（不能传自己，会递归黑屏）。
+    -->
+    <io.legado.app.lib.glass.GlassPanel
+        android:id="@+id/glass_dock"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/background"
-        android:minHeight="50dp"
-        app:itemActiveIndicatorStyle="@color/transparent"
-        app:labelVisibilityMode="unlabeled"
-        app:menu="@menu/main_bnv" />
+        android:layout_gravity="bottom"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="@dimen/lg_dock_margin"
+        app:lgBlur="true"
+        app:lgBlurDownscale="1"
+        app:lgRadius="26dp"
+        app:lgShadow="true"
+        app:lgShadowScale="1"
+        app:lgTintLevel="strong">
 
-</LinearLayout>
+        <io.legado.app.lib.theme.view.ThemeBottomNavigationVIew
+            android:id="@+id/bottom_navigation_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/transparent"
+            android:minHeight="56dp"
+            app:itemActiveIndicatorStyle="@color/transparent"
+            app:labelVisibilityMode="unlabeled"
+            app:menu="@menu/main_bnv" />
+
+    </io.legado.app.lib.glass.GlassPanel>
+
+</FrameLayout>

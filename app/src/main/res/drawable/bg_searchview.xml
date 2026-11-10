@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" >
-    <!-- 角度 -->
-    <corners android:radius="35dp"/>
-    <!-- 填充色 -->
-    <solid android:color="@color/transparent10" />
-    <!-- 描边 设置线宽及颜色 -->
+<!--
+  搜索框底。
+
+  [为什么不再用 transparent10]
+  transparent10 是 10% 的纯色覆盖，在亮色下是"淡淡的灰"，在暗色下却是"明显的灰块"，
+  两种主题下都不具备玻璃该有的边界感：没有描边，四角之外没有任何材质暗示，
+  视觉上就是一枚贴在标题栏上的灰药丸。
+
+  改成与全站一致的玻璃三件套：
+    · 填充用 lg_glass_tint_soft（亮色 14% 白 / 暗色 14% 深灰）
+    · 描边用 lg_glass_border（亮色 92% 白 / 暗色 26% 白）
+    · 圆角沿用 35dp 的全圆形态
+  这样它与标题栏玻璃同源，叠在标题栏上不会出现"两种材质打架"。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="35dp" />
+    <solid android:color="@color/lg_glass_tint_soft" />
     <stroke
-        android:color="@color/transparent10"
-        android:width="0.5dp" />
+        android:color="@color/lg_glass_border"
+        android:width="@dimen/lg_border_width" />
 </shape>

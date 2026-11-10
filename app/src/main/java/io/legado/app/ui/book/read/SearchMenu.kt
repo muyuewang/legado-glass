@@ -11,6 +11,7 @@ import android.widget.FrameLayout
 import androidx.core.view.isVisible
 import io.legado.app.R
 import io.legado.app.databinding.ViewSearchMenuBinding
+import io.legado.app.lib.glass.GlassDrawable
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
@@ -74,12 +75,24 @@ class SearchMenu @JvmOverloads constructor(
     }
 
     private fun initView() = binding.run {
-        llSearchBaseInfo.setBackgroundColor(bgColor)
-        tvCurrentSearchInfo.setTextColor(bottomBackgroundList)
-        llBottomBg.setBackgroundColor(bgColor)
-        fabLeft.backgroundTintList = bottomBackgroundList
+        /**
+         * [搜索菜单原来也是整片实色]
+         *
+         * llSearchBaseInfo（搜索信息条）、llBottomBg（底部操作栏）都是
+         * setBackgroundColor(bgColor) 的实色米条，与阅读菜单同批处理。
+         *
+         * 两处都用 bar 档（97%）：搜索态下背后同样是满屏正文，
+         * 信息条里还有"当前章节 / 结果数"这类小字，必须压住正文才读得清。
+         */
+        llSearchBaseInfo.background = buildSearchGlass(R.color.lg_glass_tint_bar, roundTop = false)
+        llBottomBg.background = buildSearchGlass(R.color.lg_glass_tint_bar, roundTop = true)
+        // 每个 FAB 各建一个实例：GlassDrawable 未实现 constantState，
+        // 用 newDrawable() 派生会拿到 null，背景直接消失
+        listOf(fabLeft, fabRight).forEach {
+            it.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.TRANSPARENT)
+            it.background = buildFabGlass()
+        }
         fabLeft.setColorFilter(textColor, PorterDuff.Mode.SRC_IN)
-        fabRight.backgroundTintList = bottomBackgroundList
         fabRight.setColorFilter(textColor, PorterDuff.Mode.SRC_IN)
         tvMainMenu.setTextColor(textColor)
         tvSearchResults.setTextColor(textColor)
@@ -100,6 +113,26 @@ class SearchMenu @JvmOverloads constructor(
         binding.vwMenuBg.visible()
         binding.llBottomMenu.startAnimation(menuBottomIn)
     }
+
+    /** 搜索菜单各条浮层的玻璃材质 */
+    private fun buildSearchGlass(@androidx.annotation.ColorRes tintRes: Int, roundTop: Boolean): GlassDrawable =
+        GlassDrawable(
+            context = context,
+            radius = context.resources.getDimension(R.dimen.lg_r_md),
+            tint = androidx.core.content.ContextCompat.getColor(context, tintRes),
+            borderColor = androidx.core.content.ContextCompat.getColor(context, R.color.lg_glass_border),
+            withShadow = false,
+            roundTopOnly = roundTop
+        )
+
+    /** 搜索菜单左右两个悬浮翻页按钮的正圆玻璃 */
+    private fun buildFabGlass(): GlassDrawable = GlassDrawable(
+        context = context,
+        radius = 999f,
+        tint = androidx.core.content.ContextCompat.getColor(context, R.color.lg_glass_tint_menu),
+        borderColor = androidx.core.content.ContextCompat.getColor(context, R.color.lg_glass_border),
+        withShadow = false
+    )
 
     fun runMenuOut(onMenuOutEnd: (() -> Unit)? = null) {
         if (isMenuOutAnimating) {

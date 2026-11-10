@@ -4,12 +4,14 @@ package io.legado.app.lib.theme
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.glass.GlassDrawable
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
 
@@ -163,10 +165,32 @@ val Context.filletBackground: GradientDrawable
         return background
     }
 
-val Context.popupBackground: GradientDrawable
-    get() {
-        val background = GradientDrawable()
-        background.cornerRadius = 12f.dpToPx()
-        background.setColor(bottomBackground)
-        return background
+/**
+ * 弹出菜单 / 下拉列表的玻璃底板。
+ *
+ * [为什么返回 GlassDrawable 而不是 GradientDrawable]
+ * 调用方 `PopupWindow.applyMd3PopupStyle()` 和 `AutoCompleteTextView` 都是
+ * 直接 `setBackground/setDropDownBackgroundDrawable`，只要求 Drawable 类型，
+ * 换成玻璃材质对这两处完全透明 —— 不需要改任何调用点。
+ *
+ * [菜单的透光率取 82%，比对话框的 72% 更实]
+ * 菜单项字号小、行数密，背后若是复杂列表，透太多会导致文字串行。
+ * 圆角用 20dp 而非对话框的 26dp：菜单是小构件，大圆角会显得松垮。
+ */
+val Context.popupBackground: Drawable
+    get() = if (AppConfig.isEInkMode) {
+        GradientDrawable().apply {
+            cornerRadius = 12f.dpToPx()
+            setColor(bottomBackground)
+        }
+    } else {
+        GlassDrawable(
+            context = this,
+            radius = resources.getDimension(R.dimen.lg_r_md),
+            tint = ContextCompat.getColor(this, R.color.lg_glass_tint_menu),
+            borderColor = ContextCompat.getColor(this, R.color.lg_glass_border),
+            // 菜单挂在 PopupWindow 上，投影由 PopupWindow.elevation 负责，
+            // 自己再画一层会和系统投影叠成双重黑影
+            withShadow = false
+        )
     }

@@ -139,9 +139,20 @@ class CoverImageView @JvmOverloads constructor(
             currentJob?.cancel()
             currentNameBitmap = null
         }
+        /**
+         * [原来的 12f 是**像素**，不是 dp]
+         * `outline.setRoundRect(0, 0, w, h, 12f)` 里的 12 直接当 px 用。
+         * 320dpi 的屏幕上 12px 只有 3.75dp，肉眼几乎看不出圆角 ——
+         * 卡片看着仍是"方图"，与浮层那套大圆角语言完全脱节。
+         *
+         * 改成按密度换算的 14dp（= lg_r_sm），与菜单、弹窗同一档圆角比例。
+         * 封面是小元件，用 26dp 那种大圆角会显得像块软糖，
+         * 14dp 在"看得出圆角"和"不抢戏"之间比较稳。
+         */
+        val radiusPx = 14f * resources.displayMetrics.density
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, w, h, 12f)
+                outline.setRoundRect(0, 0, w, h, radiusPx)
             }
         }
         clipToOutline = true
